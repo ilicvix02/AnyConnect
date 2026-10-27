@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AnyConnect</string>
+    <string name="service_label">AnyConnect control</string>
+    <string name="service_description">Lets AnyConnect read the screen that is currently open and tap, type and scroll to carry out the task you asked for. It only acts while you have started a task.</string>
+</resources>
