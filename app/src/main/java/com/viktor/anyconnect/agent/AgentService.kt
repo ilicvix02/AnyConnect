@@ -28,7 +28,7 @@ class AgentService : AccessibilityService() {
     companion object {
         @Volatile
         var instance: AgentService? = null
-        const val MAX_STEPS = 18
+        const val MAX_STEPS = 30
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -73,8 +73,7 @@ class AgentService : AccessibilityService() {
         AgentState.clearLog()
         AgentState.setRunning(true)
         AgentState.log("▶ Task: $task")
-        AgentState.log("  Open the app you want me to use…")
-        Notifier.show(this, "Starting — open the app you want me to use")
+        Notifier.show(this, "Working on: $task")
 
         val gemini = GeminiClient(prefs.apiKey, prefs.model)
         job = scope.launch {
@@ -92,26 +91,46 @@ class AgentService : AccessibilityService() {
     }
 
     private suspend fun runLoop(task: String, gemini: GeminiClient) {
-        delay(2800) // give the user a moment to switch to the target app
+        delay(700) // let AnyConnect move to the background
+        val apps = installedApps()
+        val appList = apps.keys.sorted().joinToString(", ")
         val history = StringBuilder()
 
         for (step in 1..MAX_STEPS) {
             if (!AgentState.running.value) break
 
             val screen = dumpScreen()
+            val where = if (screen.appPackage == packageName)
+                "$packageName (this is AnyConnect itself, open the app the task needs)"
+            else screen.appPackage
             Notifier.show(this, "Step $step/$MAX_STEPS — thinking…")
 
             val action = gemini.decideNextAction(
-                task, screen.appPackage, screen.elementsText, history.toString()
+                task, where, screen.elementsText, history.takeLast(3000).toString(), appList
             )
             if (action.thought.isNotBlank()) AgentState.log("• ${action.thought}")
-            history.append("Step $step: ${action.action}")
+            history.append("Step $step in ${screen.appPackage}: ${action.action}")
 
             when (action.action) {
                 "done" -> {
-                    AgentState.log("✔ Done.")
-                    Notifier.show(this, "Done")
+                    val summary = action.text.ifBlank { "Task complete." }
+                    AgentState.log("✔ Done: $summary")
+                    Notifier.show(this, "Done: $summary")
                     return
+                }
+                "open_app" -> {
+                    val pkg = matchApp(apps, action.text)
+                    if (pkg == null) {
+                        AgentState.log("  (couldn't find app “${action.text}”)")
+                        history.append(" \"${action.text}\" FAILED: no such app")
+                    } else {
+                        AgentState.log("  open ${action.text}")
+                        val launch = packageManager.getLaunchIntentForPackage(pkg)
+                        launch?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        if (launch != null) startActivity(launch)
+                        history.append(" \"${action.text}\"")
+                        delay(1800) // give the app time to open
+                    }
                 }
                 "wait" -> delay(1500)
                 "back" -> performGlobalAction(GLOBAL_ACTION_BACK)
@@ -144,6 +163,30 @@ class AgentService : AccessibilityService() {
             delay(950) // let the screen settle before the next look
         }
         AgentState.log("⏹ Reached the step limit.")
+    }
+
+    // ---- apps ----
+
+    /** Launchable apps on the phone, label -> package. */
+    private fun installedApps(): Map<String, String> {
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        val out = HashMap<String, String>()
+        for (ri in packageManager.queryIntentActivities(intent, 0)) {
+            val pkg = ri.activityInfo.packageName
+            if (pkg == packageName) continue
+            val label = ri.loadLabel(packageManager).toString().trim()
+            if (label.isNotEmpty()) out[label] = pkg
+        }
+        return out
+    }
+
+    private fun matchApp(apps: Map<String, String>, name: String): String? {
+        val q = name.trim().lowercase()
+        if (q.isEmpty()) return null
+        apps.entries.firstOrNull { it.key.lowercase() == q }?.let { return it.value }
+        apps.entries.firstOrNull { it.key.lowercase().contains(q) || q.contains(it.key.lowercase()) }
+            ?.let { return it.value }
+        return apps.values.firstOrNull { it.lowercase() == q }
     }
 
     // ---- screen reading ----

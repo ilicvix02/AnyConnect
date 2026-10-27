@@ -122,7 +122,7 @@ private fun AppScreen(activity: Activity) {
 
         Spacer(Modifier.height(4.dp))
         Text(
-            "Tell the agent what to do. It reads the screen and taps, types and scrolls to do it in any app.",
+            "Give it a task and put the phone down. The agent opens the right app and taps, types and scrolls until it's done.",
             color = Muted,
             fontSize = 14.sp
         )
@@ -180,7 +180,7 @@ private fun AppScreen(activity: Activity) {
             modifier = Modifier.fillMaxWidth(),
             minLines = 2,
             label = { Text("What should the agent do?") },
-            placeholder = { Text("e.g. Open Settings and turn on Wi-Fi") }
+            placeholder = { Text("e.g. Open YouTube and play lofi music") }
         )
 
         Spacer(Modifier.height(12.dp))

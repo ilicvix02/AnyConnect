@@ -25,28 +25,33 @@ class GeminiClient(private val apiKey: String, private val model: String) {
         task: String,
         pkg: String,
         elements: String,
-        history: String
+        history: String,
+        installedApps: String
     ): Action = withContext(Dispatchers.IO) {
 
         val system = """
-            You are an agent that operates an Android phone to accomplish a user's task.
-            You see the elements currently on screen and choose ONE action at a time.
-            You act inside whichever app is currently open.
+            You are a fully autonomous agent that operates an Android phone to accomplish the user's task.
+            The user will not touch the phone while you work, so never wait for them or ask them to do anything.
+            Each turn you see the elements on the current screen and choose ONE action.
 
             Reply with ONLY a JSON object, no prose and no code fences:
-            {"thought":"short reason","action":"click|setText|scroll|back|home|recents|wait|done","index":<element number or -1>,"text":"<text for setText, else empty>","direction":"down|up"}
+            {"thought":"short reason","action":"open_app|click|setText|scroll|back|home|recents|wait|done","index":<element number or -1>,"text":"<app name for open_app, text for setText, summary for done, else empty>","direction":"down|up"}
 
             Rules:
-            - For click and setText, "index" is the [number] of an element in the list.
-            - setText types into a field; tap the submit/search element in a later step.
-            - Use "wait" if the screen is still loading or the target app is not open yet.
-            - Use "scroll" with a direction to reveal more content.
-            - Use "done" only when the task is fully complete.
+            - If the task needs an app that is not in front, use open_app with the app's exact name from INSTALLED APPS.
+            - If AnyConnect itself or the home screen is in front, start by opening the app the task needs.
+            - For click and setText, "index" is the [number] of an element in the current list.
+            - setText types into a field; tap the send/search/submit element in a later step.
+            - Use "wait" only while a screen is loading.
+            - Use "scroll" with a direction to find things that are not visible.
+            - If an action did not work (the screen did not change), try a different approach.
+            - Use "done" when the task is complete, with a one-sentence summary in "text".
             - Exactly one action per reply.
         """.trimIndent()
 
         val user = buildString {
             append("TASK: ").append(task).append("\n\n")
+            append("INSTALLED APPS: ").append(installedApps).append("\n\n")
             append("CURRENT APP: ").append(pkg).append("\n\n")
             append("SCREEN ELEMENTS:\n")
             append(if (elements.isBlank()) "(none visible)" else elements)
