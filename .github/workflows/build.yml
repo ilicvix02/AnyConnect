@@ -28,21 +28,24 @@ jobs:
           "$SDKM" "platforms;android-35" "build-tools;35.0.0" >/dev/null || true
           echo "sdk.dir=$ANDROID_HOME" > local.properties
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+      - name: Build release APK
+        run: |
+          ./gradlew assembleRelease --stacktrace --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk AnyConnect.apk
+          ls -l AnyConnect.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: AnyConnect-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: AnyConnect.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: AnyConnect v1.0.${{ github.run_number }}
-          files: app/build/outputs/apk/debug/app-debug.apk
+          make_latest: true
+          files: AnyConnect.apk
           body: |
-            AnyConnect debug build.
-            Download app-debug.apk below, open it on your Android phone, allow install from this source, then turn on the Accessibility permission for AnyConnect.
+            Download AnyConnect.apk below, open it on your Android phone, allow install from this source, then turn on the Accessibility permission for AnyConnect.

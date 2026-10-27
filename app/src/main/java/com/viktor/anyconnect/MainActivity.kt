@@ -29,7 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -220,7 +220,7 @@ private fun AppScreen(activity: Activity) {
                     contentColor = Color.Black
                 )
             ) {
-                Icon(Icons.Filled.Stop, contentDescription = null)
+                Icon(Icons.Filled.Close, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Stop", fontWeight = FontWeight.Bold, fontSize = 16.sp)
             }
